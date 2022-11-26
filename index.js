@@ -21,22 +21,30 @@ const client = new MongoClient(uri, {
 //database api
 async function run() {
   try {
-    const buyerCollection = client.db("resellWebsite").collection("buyers");
-    const sellerCollection = client.db("resellWebsite").collection("sellers");
+    const useCollection = client.db("resellWebsite").collection("users");
 
-    //create buyers
-    app.post("/buyers", async (req, res) => {
+    //create users
+    app.post("/users", async (req, res) => {
       const customers = req.body;
       console.log(customers);
-      const result = await buyerCollection.insertOne(customers);
+      const result = await useCollection.insertOne(customers);
       res.send(result);
     });
-    //create sellers
-    app.post("/sellers", async (req, res) => {
-      const customers = req.body;
-      console.log(customers);
-      const result = await sellerCollection.insertOne(customers);
-      res.send(result);
+
+    //get users
+    app.get("/users", async (req, res) => {
+      const query = {};
+      const cursor = useCollection.find(query);
+      const users = await cursor.toArray();
+      res.send(users);
+    });
+
+    //get users
+    app.get("/users/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const users = await useCollection.findOne(query);
+      res.send(users);
     });
   } catch {}
 }
