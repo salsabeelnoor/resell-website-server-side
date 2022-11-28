@@ -26,6 +26,7 @@ async function run() {
     const categoryCollection = client
       .db("resellWebsite")
       .collection("categories");
+    const bookingCollection = client.db("resellWebsite").collection("bookings");
 
     //create users
     app.post("/users", async (req, res) => {
@@ -111,6 +112,33 @@ async function run() {
         options
       );
       res.send(result);
+    });
+
+    //post bookings
+    app.post("/bookings", async (req, res) => {
+      const booking = req.body;
+      const query = {
+        bookedProductId: booking.bookedProductId,
+        email: booking.email,
+      };
+
+      const alreadyBooked = await bookingCollection.find(query).toArray();
+
+      if (alreadyBooked.length) {
+        const message = `You already have a booking on ${booking.bookedProductName}`;
+        return res.send({ acknowledged: false, message });
+      }
+
+      const result = await bookingCollection.insertOne(booking);
+      res.send(result);
+    });
+
+    //get bookings
+    app.get("/bookings", async (req, res) => {
+      const email = req.query.email;
+      const query = { email: email };
+      const bookings = await bookingCollection.find(query).toArray();
+      res.send(bookings);
     });
   } catch {}
 }
