@@ -23,6 +23,9 @@ async function run() {
   try {
     const useCollection = client.db("resellWebsite").collection("users");
     const productCollection = client.db("resellWebsite").collection("products");
+    const categoryCollection = client
+      .db("resellWebsite")
+      .collection("categories");
 
     //create users
     app.post("/users", async (req, res) => {
@@ -48,6 +51,22 @@ async function run() {
       res.send(users);
     });
 
+    //get categories
+    app.get("/categories", async (req, res) => {
+      const query = {};
+      const cursor = categoryCollection.find(query);
+      const categories = await cursor.toArray();
+      res.send(categories);
+    });
+
+    //get categories/:id
+    app.get("/categories/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const category = await categoryCollection.findOne(query);
+      res.send(category);
+    });
+
     //create product
     app.post("/products", async (req, res) => {
       const product = req.body;
@@ -57,7 +76,12 @@ async function run() {
 
     //get products
     app.get("/products", async (req, res) => {
-      const query = {};
+      let query = {};
+
+      if (req.query.category) {
+        query = { category: req.query.category };
+      }
+
       const cursor = productCollection.find(query);
       const products = await cursor.toArray();
       res.send(products);
