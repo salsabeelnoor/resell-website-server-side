@@ -27,6 +27,9 @@ async function run() {
       .db("resellWebsite")
       .collection("categories");
     const bookingCollection = client.db("resellWebsite").collection("bookings");
+    const wishListCollection = client
+      .db("resellWebsite")
+      .collection("wishlists");
 
     //create users
     app.post("/users", async (req, res) => {
@@ -119,7 +122,7 @@ async function run() {
       const booking = req.body;
       const query = {
         bookedProductId: booking.bookedProductId,
-        email: booking.email,
+        buyerEmail: booking.buyerEmail,
       };
 
       const alreadyBooked = await bookingCollection.find(query).toArray();
@@ -135,10 +138,37 @@ async function run() {
 
     //get bookings
     app.get("/bookings", async (req, res) => {
-      const email = req.query.email;
-      const query = { email: email };
-      const bookings = await bookingCollection.find(query).toArray();
+      const query = {};
+      const cursor = bookingCollection.find(query);
+      const bookings = await cursor.toArray();
       res.send(bookings);
+    });
+
+    //post wishList
+    app.post("/wishlists", async (req, res) => {
+      const wishList = req.body;
+      const query = {
+        productId: wishList.productId,
+        buyerEmail: wishList.buyerEmail,
+      };
+
+      const alreadyWishListed = await wishListCollection.find(query).toArray();
+
+      if (alreadyWishListed.length) {
+        const message = `You already have wishlisted ${wishList.productName}`;
+        return res.send({ acknowledged: false, message });
+      }
+
+      const result = await wishListCollection.insertOne(wishList);
+      res.send(result);
+    });
+
+    //get wishList
+    app.get("/wishlists", async (req, res) => {
+      const query = {};
+      const cursor = wishListCollection.find(query);
+      const wishlist = await cursor.toArray();
+      res.send(wishlist);
     });
   } catch {}
 }
