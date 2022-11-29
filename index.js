@@ -137,10 +137,10 @@ async function run() {
     });
 
     //get bookings
-    app.get("/bookings", async (req, res) => {
-      const query = {};
-      const cursor = bookingCollection.find(query);
-      const bookings = await cursor.toArray();
+    app.get("/bookings/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { buyerEmail: email };
+      const bookings = await bookingCollection.find(query).toArray();
       res.send(bookings);
     });
 
@@ -163,12 +163,12 @@ async function run() {
       res.send(result);
     });
 
-    //get wishList
-    app.get("/wishlists", async (req, res) => {
-      const query = {};
-      const cursor = wishListCollection.find(query);
-      const wishlist = await cursor.toArray();
-      res.send(wishlist);
+    //get bookings
+    app.get("/wishlists/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { buyerEmail: email };
+      const wishlists = await wishListCollection.find(query).toArray();
+      res.send(wishlists);
     });
   } catch {}
 }
