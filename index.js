@@ -11,7 +11,6 @@ app.use(cors());
 app.use(express.json());
 
 const uri = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PASSWORD}@cluster0.jvabeue.mongodb.net/?retryWrites=true&w=majority`;
-console.log(uri);
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -55,6 +54,28 @@ async function run() {
       res.send(users);
     });
 
+    //update user
+    app.put("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          verified: true,
+        },
+      };
+      const result = await useCollection.updateOne(filter, updatedDoc, options);
+      res.send(result);
+    });
+
+    //delete seller
+    app.delete("/users/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await useCollection.deleteOne(query);
+      res.send(result);
+    });
+
     //get categories
     app.get("/categories", async (req, res) => {
       const query = {};
@@ -88,6 +109,15 @@ async function run() {
 
       const cursor = productCollection.find(query);
       const products = await cursor.toArray();
+      res.send(products);
+    });
+
+    //get products by email
+    app.get("/products/:email", async (req, res) => {
+      const email = req.params.email;
+      console.log(email);
+      const query = { email: email };
+      const products = await productCollection.find(query).toArray();
       res.send(products);
     });
 
@@ -136,12 +166,20 @@ async function run() {
       res.send(result);
     });
 
-    //get bookings
+    //get bookings by email
     app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
       const query = { buyerEmail: email };
       const bookings = await bookingCollection.find(query).toArray();
       res.send(bookings);
+    });
+
+    //delete booking
+    app.delete("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await bookingCollection.deleteOne(query);
+      res.send(result);
     });
 
     //post wishList
@@ -152,7 +190,18 @@ async function run() {
         buyerEmail: wishList.buyerEmail,
       };
 
+      const alreadyBooked = await bookingCollection
+        .find({
+          bookedProductId: req.body.productId,
+          buyerEmail: req.body.buyerEmail,
+        })
+        .toArray();
       const alreadyWishListed = await wishListCollection.find(query).toArray();
+
+      if (alreadyBooked.length) {
+        const message = `You already have a booking on ${wishList.productName}`;
+        return res.send({ acknowledged: false, message });
+      }
 
       if (alreadyWishListed.length) {
         const message = `You already have wishlisted ${wishList.productName}`;
@@ -163,12 +212,20 @@ async function run() {
       res.send(result);
     });
 
-    //get bookings
+    //get bookings by email
     app.get("/wishlists/:email", async (req, res) => {
       const email = req.params.email;
       const query = { buyerEmail: email };
       const wishlists = await wishListCollection.find(query).toArray();
       res.send(wishlists);
+    });
+
+    //delete booking
+    app.delete("/wishlists/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const result = await wishListCollection.deleteOne(query);
+      res.send(result);
     });
   } catch {}
 }
