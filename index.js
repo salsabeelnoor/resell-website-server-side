@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 require("dotenv").config();
+const stripe = require("stripe")(process.env.STRIPE_SECRET_KEY);
 
 const app = express();
 const port = process.env.PORT || 5000;
@@ -29,6 +30,7 @@ async function run() {
     const wishListCollection = client
       .db("resellWebsite")
       .collection("wishlists");
+    const paymentCollection = client.db("resellWebsite").collection("payments");
 
     //create users
     app.post("/users", async (req, res) => {
@@ -166,10 +168,26 @@ async function run() {
       res.send(result);
     });
 
+    //get bookings by id
+    app.get("/bookings/payment/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const bookings = await bookingCollection.findOne(query);
+      res.send(bookings);
+    });
+
     //get bookings by email
     app.get("/bookings/:email", async (req, res) => {
       const email = req.params.email;
       const query = { buyerEmail: email };
+      const bookings = await bookingCollection.find(query).toArray();
+      console.log("data not found");
+      res.send(bookings);
+    });
+
+    //get bookings
+    app.get("/bookings", async (req, res) => {
+      const query = {};
       const bookings = await bookingCollection.find(query).toArray();
       res.send(bookings);
     });
@@ -218,6 +236,96 @@ async function run() {
       const query = { buyerEmail: email };
       const wishlists = await wishListCollection.find(query).toArray();
       res.send(wishlists);
+    });
+
+    //get wishlist by id
+    app.get("/wishlists/payment/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: ObjectId(id) };
+      const wishlists = await wishListCollection.findOne(query);
+      res.send(wishlists);
+    });
+
+    app.post("/create-payment-intent", async (req, res) => {
+      const booking = req.body;
+      const price = booking.bookerProductPrice;
+      const amount = price * 100;
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        currency: "bdt",
+        amount: amount,
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/payments", async (req, res) => {
+      const payment = req.body;
+      const result = await paymentCollection.insertOne(payment);
+      res.send(result);
+    });
+
+    app.put("/bookings/:id", async (req, res) => {
+      const id = req.params.id;
+      const payment = await paymentCollection.findOne({
+        bookingid: id,
+      });
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          paymentStatus: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const result = await bookingCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+    app.put("/wishlist/:id", async (req, res) => {
+      const id = req.params.id;
+      const payment = await paymentCollection.findOne({
+        bookingid: id,
+      });
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          paymentStatus: true,
+          transactionId: payment.transactionId,
+        },
+      };
+      const result = await wishListCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+    app.put("/products/payment/:id", async (req, res) => {
+      const id = req.params.id;
+      const payment = await paymentCollection.findOne({
+        productId: id,
+      });
+      const filter = { _id: ObjectId(id) };
+      const options = { upsert: true };
+      const updatedDoc = {
+        $set: {
+          advertise: false,
+          productStatus: "sold",
+        },
+      };
+      const result = await productCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
     });
 
     //delete booking
